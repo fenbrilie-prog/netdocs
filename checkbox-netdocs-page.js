@@ -1,14 +1,93 @@
+/*!
+ * Checkbox × NetDocuments — Integration landing page
+ *
+ * Self-contained JS file. No external dependencies.
+ *
+ * Handles:
+ *   1. Smooth scroll for in-page anchor links
+ *   2. Single-open behaviour on the FAQ accordion
+ *   3. "Book a demo" modal: open / close / Escape / outside-click
+ *   4. Interactive lifecycle player in §3 (5-stage walkthrough with
+ *      play / pause / prev / next / replay controls)
+ *
+ * Pair with: checkbox-netdocs-page.css
+ * Used by:   /solution/netdocs page on checkbox.ai
+ */
+
 /* ============================================================
-   Checkbox × NetDocuments — Page-specific JS
+   PART 1 — Shared page behaviours (scroll, accordion, modal)
+   ============================================================ */
 
-   Drives the interactive lifecycle player in §3 (the dot-grid
-   animation with play/pause/prev/next controls).
+(function() {
+  var anchors = document.querySelectorAll('.cbx-r a[href^="#"]');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  anchors.forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var hash = link.getAttribute('href');
+      if (!hash || hash === '#') return;
+      var target = document.querySelector(hash);
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  });
 
-   Sits on top of the existing Checkbox landing JS
-   (repettive-request js.js, which handles modal + smooth scroll).
-   Load this AFTER the main JS in your Webflow embed.
+  // Problem section: enforce only one open at a time
+  var problemItems = document.querySelectorAll('.cbx-r__problem-item');
+  problemItems.forEach(function(item) {
+    item.addEventListener('toggle', function() {
+      if (item.open) {
+        problemItems.forEach(function(other) {
+          if (other !== item && other.open) other.open = false;
+        });
+      }
+    });
+  });
 
-   Self-contained IIFE. Safe to inline or load via <script src>.
+  // Book a demo modal: open / close / Escape / outside-click
+  var modal = document.querySelector('[data-cbx-r-modal]');
+  var openTriggers = document.querySelectorAll('[data-cbx-r-open-modal]');
+  var closeTrigger = modal ? modal.querySelector('[data-cbx-r-close-modal]') : null;
+  var lastFocused = null;
+
+  function openModal() {
+    if (!modal) return;
+    lastFocused = document.activeElement;
+    modal.dataset.open = 'true';
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('cbx-r-modal-open');
+    if (closeTrigger) closeTrigger.focus({ preventScroll: true });
+  }
+  function closeModal() {
+    if (!modal) return;
+    modal.dataset.open = 'false';
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('cbx-r-modal-open');
+    if (lastFocused && typeof lastFocused.focus === 'function') {
+      lastFocused.focus({ preventScroll: true });
+    }
+  }
+
+  openTriggers.forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      openModal();
+    });
+  });
+  if (closeTrigger) closeTrigger.addEventListener('click', closeModal);
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeModal();
+    });
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && modal && modal.dataset.open === 'true') closeModal();
+  });
+})();
+
+
+/* ============================================================
+   PART 2 — Lifecycle track player (§3 interactive walkthrough)
    ============================================================ */
 
 (function () {
