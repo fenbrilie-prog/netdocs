@@ -163,6 +163,70 @@
     }
   }
 
+  // ----- Counter animations -----
+  // Each [data-cbx-r-counter] element declares its own target value and
+  // the stage at which it should start counting. When that stage fires,
+  // we animate 0 -> target. Going below that stage resets to 0.
+  var counterEls = document.querySelectorAll('[data-cbx-r-counter]');
+  var counters = [];
+  for (var ci = 0; ci < counterEls.length; ci++) {
+    var el = counterEls[ci];
+    counters.push({
+      el: el,
+      target: parseInt(el.getAttribute('data-cbx-r-counter-target'), 10) || 0,
+      triggerStage: parseInt(el.getAttribute('data-cbx-r-counter-stage'), 10) || 1,
+      rafId: null,
+      hasFired: false
+    });
+  }
+
+  function animateCounter(counter) {
+    cancelAnimationFrame(counter.rafId);
+    var startTime = null;
+    var duration = 1100; // ms — feels confident, not slow
+    var fromVal = 0;
+    var toVal = counter.target;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      var elapsed = timestamp - startTime;
+      var progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic — fast start, gentle landing
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var current = Math.round(fromVal + (toVal - fromVal) * eased);
+      counter.el.textContent = current;
+      if (progress < 1) {
+        counter.rafId = requestAnimationFrame(step);
+      } else {
+        counter.el.textContent = toVal;
+      }
+    }
+    counter.rafId = requestAnimationFrame(step);
+  }
+
+  function resetCounter(counter) {
+    cancelAnimationFrame(counter.rafId);
+    counter.el.textContent = '0';
+  }
+
+  function updateCountersForStage(stageIndex) {
+    for (var i = 0; i < counters.length; i++) {
+      var c = counters[i];
+      if (stageIndex >= c.triggerStage) {
+        if (!c.hasFired) {
+          // Small delay so any CSS fade-in lands before digits start spinning
+          (function (counter) {
+            setTimeout(function () { animateCounter(counter); }, 300);
+          })(c);
+          c.hasFired = true;
+        }
+      } else {
+        resetCounter(c);
+        c.hasFired = false;
+      }
+    }
+  }
+
   function renderStage(stageIndex) {
     var stage = STAGES[stageIndex - 1];
     if (!stage) return;
@@ -178,6 +242,7 @@
 
     setStageClass(stageIndex);
     setProgress(stageIndex);
+    updateCountersForStage(stageIndex);
 
     // Update prev/next button enabled states
     if (prevBtn) prevBtn.disabled = (stageIndex <= 1);
@@ -330,4 +395,54 @@
       }
     });
   }
+})();
+
+
+/* ============================================================
+   PART 3 — Tabbed showcase ("What legal teams can now do")
+   Three tabs, one panel visible at a time. Clean ARIA toggling.
+   ============================================================ */
+(function () {
+  var section = document.querySelector('[data-cbx-r-tabs]');
+  if (!section) return;
+
+  var tabs = section.querySelectorAll('.cbx-r__nd-tab');
+  var panels = section.querySelectorAll('.cbx-r__nd-panel');
+  if (!tabs.length || !panels.length) return;
+
+  function activate(tabIndex) {
+    // tabIndex is 1-based to match data-tab attribute
+    var idStr = String(tabIndex);
+    section.setAttribute('data-active', idStr);
+
+    tabs.forEach(function (t) {
+      var isActive = t.getAttribute('data-tab') === idStr;
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    panels.forEach(function (p) {
+      var isActive = p.getAttribute('data-panel') === idStr;
+      p.setAttribute('data-panel-active', isActive ? 'true' : 'false');
+    });
+  }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var id = tab.getAttribute('data-tab');
+      activate(parseInt(id, 10));
+    });
+
+    // Keyboard arrow navigation (left/right)
+    tab.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      var current = parseInt(tab.getAttribute('data-tab'), 10);
+      var next = e.key === 'ArrowRight' ? current + 1 : current - 1;
+      if (next < 1) next = tabs.length;
+      if (next > tabs.length) next = 1;
+      activate(next);
+      var nextTab = section.querySelector('.cbx-r__nd-tab[data-tab="' + next + '"]');
+      if (nextTab) nextTab.focus();
+    });
+  });
 })();
