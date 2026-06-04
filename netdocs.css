@@ -4961,8 +4961,24 @@
 .cbx-r__nd-track-zone {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
+/* Pill + sub-text are wrapped in a "group" so they stack as a single unit.
+   The zone aligns the entire group left/center/right; inside the group,
+   both items left-align so the sub sits directly under the pill regardless
+   of length differences. */
+.cbx-r__nd-track-zone-group {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.cbx-r__nd-track-zone--cbx { align-items: flex-start; }
+.cbx-r__nd-track-zone--api { align-items: center; }
+.cbx-r__nd-track-zone--nd  { align-items: flex-end; }
+/* Inside the ND group, contents stay left-aligned so the sub-text aligns
+   with the pill's left edge — but the group as a whole sits at the right
+   of the column. The text-align: right on the sub is removed since the
+   group anchoring handles positioning now. */
 .cbx-r__nd-track-zone-pill {
   display: inline-flex;
   align-items: center;
@@ -4987,7 +5003,6 @@
   border-color: #0BB870;
 }
 .cbx-r__nd-track-zone--cbx .cbx-r__nd-track-zone-pill::before { background: #11D281; }
-.cbx-r__nd-track-zone--api { align-items: center; }
 .cbx-r__nd-track-zone--api .cbx-r__nd-track-zone-pill {
   background: var(--ink-deep);
   color: white;
@@ -4995,7 +5010,6 @@
   align-self: center;
 }
 .cbx-r__nd-track-zone--api .cbx-r__nd-track-zone-pill::before { background: #11D281; }
-.cbx-r__nd-track-zone--nd { align-items: flex-end; }
 .cbx-r__nd-track-zone--nd .cbx-r__nd-track-zone-pill {
   border-color: #003D7A;
 }
@@ -5006,7 +5020,6 @@
   font-weight: 500;
 }
 .cbx-r__nd-track-zone--api .cbx-r__nd-track-zone-sub { text-align: center; }
-.cbx-r__nd-track-zone--nd .cbx-r__nd-track-zone-sub { text-align: right; }
 
 /* The dot-grid track itself */
 .cbx-r__nd-track-rail {
